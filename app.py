@@ -1,18 +1,24 @@
 import sqlite3
-import io
 import streamlit as st
 
+# Configuration =============================================================================================
+st.set_page_config(page_title="SQL Wizard", page_icon="🔮", layout="wide", initial_sidebar_state="expanded")
+st.title("🔮 SQL Wizard &nbsp;|&nbsp; :violet[AI Query Generator]", text_alignment="center")
+st.write("")
+
+
+st.sidebar.title(":violet[Configuration]", text_alignment='center')
+GOOGLE_API_KEY = st.sidebar.text_input(":green[Enter Google API Key: ]", type='password') or st.secrets.api_key.GOOGLE_API_KEY
+
+
+model_name = st.sidebar.selectbox(":green[Select Model Name: ]",
+                                  options=['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'],
+                                  index=0)
 # BackEnd ===================================================================================================
 
 
 
 # FrontEnd ==================================================================================================
-st.set_page_config(page_title="SQL Wizard", page_icon="🔮", layout="wide", initial_sidebar_state="expanded")
-st.title("🔮 SQL Wizard &nbsp;|&nbsp; :violet[AI Query Generator]", text_alignment="center")
-st.write("")
-
-st.sidebar.title("User Input", text_alignment='center')
-
 with st.container(border=True, horizontal_alignment="right"):
     st.subheader(":green[Enter Query in Natural Language : ]")
     prompt_input_section, prompt_button_section = st.columns([10,2], vertical_alignment='bottom')
@@ -27,7 +33,7 @@ with st.container(border=True, horizontal_alignment="right"):
 
 if prompt_button:
     if not prompt_input:
-        info_placeholder.info("Please input an query.")
+        info_placeholder.info("Please enter a query.")
     elif len(prompt_input) < 5:
         info_placeholder.info("Query must be longer than 5 letters.")
 
