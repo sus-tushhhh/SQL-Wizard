@@ -12,10 +12,10 @@ st.write("")
 
 
 with st.sidebar:
-    st.title(":violet[⚙️Configuration] ", text_alignment="center")
+    st.title(":orange[⚙️Configuration] ", text_alignment="center")
 
     with st.container(border=True):
-        st.subheader(":blue[Model Configuration : ]")
+        st.subheader(":blue[Model : ]")
         GOOGLE_API_KEY = st.text_input(label=":green[Enter Google API Key : ]", 
                                        type='password') or st.secrets.api_key.GOOGLE_API_KEY
 
@@ -23,33 +23,74 @@ with st.sidebar:
                                   options=['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'],
                                   index=0)
 
+    def clear_cache():
+        st.cache_resource.clear()
+        st.cache_data.clear()
+
 
     with st.container(border=True):
-        st.subheader(":blue[Database Configuration : ]")
+        st.subheader(":blue[Database : ]")
         #st.info("Keep database empty to use sample database or use {table_name} as placeholder")
         uploaded_file = st.file_uploader(label=":green[Upload database : ]",
-                                         type=[".db", ".sqlite", ".sqlite3"])
-        if uploaded_file:
+                                         type=[".db", ".sqlite", ".sqlite3"],
+                                         on_change=clear_cache)
+
+        @st.cache_resource
+        def get_conn() -> sqlite3.Connection:
+            if uploaded_file:
+                buf = uploaded_file.getbuffer()
+            else:
+                with open("assets/sample.db", "rb") as f:
+                    buf = f.read()
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_file:
-                tmp_file.write(uploaded_file.getbuffer())
+                tmp_file.write(buf)
                 temp_path = tmp_file.name
 
-        if uploaded_file:
-            conn = sqlite3.Connection(temp_path)
-            cursor = conn.cursor()
-        else:
-            conn = sqlite3.Connection("assets/sample.db")
-            cursor = conn.cursor()
+            if "temp_path" not in st.session_state:
+                st.session_state.temp_path = temp_path
+            
+            conn = sqlite3.Connection(temp_path, check_same_thread=False)
+        
+            return conn
+
+        uploaded_file = None
+
+
+        conn = get_conn()
+        cursor = conn.cursor()
 
         if cursor:
             table_names = pd.read_sql_query("SELECT name FROM sqlite_schema WHERE type='table';", conn)
             selected_table = st.selectbox(label=":green[Select Table : ]",
-                                          options=table_names['name'].to_list() + ["{table_name} as placeholder"])
+                                          options=["{table_name} as placeholder"] + table_names['name'].to_list(),
+                                          index=0,
+                                          on_change=clear_cache)
 
     with st.container(border=True):
-        st.subheader(":red[Danger Zone : ]")
+        st.subheader(":red[Critical : ]")
         auto_commit_toggle = st.toggle(label=":red[Auto Commit Changes]")
 
+
+if selected_table != "{table_name} as placeholder":
+    with st.container(border=True):
+        header, download = st.columns([8, 2], vertical_alignment="bottom")
+        with header:
+            st.subheader(":violet[📋 Table Preview (top 5 records) : ]")
+        with download:
+            with open(st.session_state.temp_path, 'rb') as f:
+                st.download_button("Download Database",
+                                   data=f.read(),
+                                   file_name="sql_wizard.db",
+                                   mime="application/octet-stream",
+                                   width='stretch',
+                                   icon=":material/download:")
+
+        table_preview_placeholder = st.empty()
+        table_preview_placeholder.dataframe(data=pd.read_sql_query(f"""
+                                                            Select * from {selected_table}  
+                                                            LIMIT 5""", conn),
+                                            hide_index=True)
 
 # BackEnd ===================================================================================================
 gemini = ChatGoogleGenerativeAI(
@@ -61,15 +102,57 @@ agent = create_agent(
     model=gemini
 )
 
+def update_table(query: str):
+    if query.startswith('SELECT'):
+        limit = " LIMIT 5;"
+    else:
+        limit = " "
+
+    table_preview_placeholder.dataframe(data=pd.read_sql_query(query.lstrip(';') + limit, conn),
+                                        hide_index=True)
+    
+def rollback_sql():
+    conn.rollback()
+    update_table(f"SELECT * from {selected_table}")
+
+
+def commit_sql():
+    conn.commit()
+
+
+def execute_sql(sql_query):
+    try:
+        cursor.execute(sql_query)
+        if auto_commit_toggle:
+            commit_sql() 
+
+        if cursor.fetchall():
+            if selected_table != "{table_name} as placeholder":
+                update_table(sql_query)
+            
+        else:
+            if selected_table != "{table_name} as placeholder":
+                update_table(f"SELECT * from {selected_table}") 
+
+        return [True, "Successfully executed query"]
+
+    except Exception as e:
+        rollback_sql()
+        return [False, "Changes were rolled back", sql_query, e]
+
+
+
+
 @st.cache_data
 def query_generator(query, _agent=agent) -> list[str]:
     prompt = f"""
         You are a Natural Language to SQL query generator agent
-        create your answer in three parts 
+        create your answer in Three parts 
         first generate SQL command based on user query
         second you have to explain the query to the user
         third provide a tip for the user to enhace, optimize the query
         don't write headings of parts and don't write ```sql
+        use `` to escape column names for only reserved keywords not for other column names
         always use semicolons where ever needed and highlight words in explanationa and tip using ``
 
         don't answer anything other than SQL queries if user says anything out of context just say
@@ -92,32 +175,10 @@ def query_generator(query, _agent=agent) -> list[str]:
         return answer.split('\n\n')
 
 
-    
 
 # FrontEnd ==================================================================================================
-if selected_table != "{table_name} as placeholder":
-    with st.container(border=True):
-        st.subheader(":orange[Table Preview (upto 10 records) : ]")
-        table_preview_placeholder = st.empty()
-        table_preview_placeholder.dataframe(data=pd.read_sql_query(f"""
-                                                            Select * from {selected_table}  
-                                                            LIMIT 10""", conn),
-                                            hide_index=True)
-
-        
-def update_table(query: str):
-    if query.startswith("SELECT"):
-        table_preview_placeholder.dataframe(data=pd.read_sql_query(query[:-1] + " LIMIT 10;", conn),
-                                            hide_index=True)
-    else:
-        table_preview_placeholder.dataframe(data=pd.read_sql_query(f"""
-                                                                    Select * from {selected_table}  
-                                                                    LIMIT 10""", conn),
-                                                    hide_index=True)
-
-
 with st.container(border=True):
-    st.subheader(":green[Enter Query in Natural Language : ]")
+    st.subheader(":violet[🔍 Enter Query in Natural Language : ]")
     prompt_input_section, prompt_button_section = st.columns([10,2], vertical_alignment='bottom')
     with prompt_input_section:
         prompt_input = st.text_input("", label_visibility='collapsed',
@@ -139,24 +200,21 @@ elif prompt_input or prompt_button:
         if response := query_generator(query=prompt_input):
             if len(response) > 1:
                 sql_query, explaination_text, tip = response
+              
+                with st.container(border=True, height='stretch'):
+                    st.subheader(":violet[✨ AI Generated Query : ]")
+                    st.code(sql_query, language='sql', height='stretch')
 
-                code_section, explaination = st.columns([3, 2]) 
-                with code_section:
+                explaination_section, tip_section = st.columns(2)
+                with explaination_section:
                     with st.container(border=True, height='stretch'):
-                        st.subheader(":violet[AI Generated Query : ]")
-                        st.code(sql_query, language='sql', height='stretch')
-
-                with explaination:
-                    with st.container(border=True, height='stretch'):
-                        st.subheader(":violet[Explanation : ]")
+                        st.subheader(":violet[📖 Explanation : ]")
                         st.write(explaination_text)
 
-                with st.container(border=True):
-                    st.subheader(":violet[Pro Tip : ]")
-                    st.write(tip)
-
-                if selected_table != "{table_name} as placeholder":
-                    update_table(sql_query)
+                with tip_section:
+                    with st.container(border=True):
+                        st.subheader(":violet[💡 Pro Tip : ]")
+                        st.write(tip)
 
             else:
                 st.warning(response[0])
@@ -167,11 +225,24 @@ if selected_table != "{table_name} as placeholder":
         left, middle, right = st.columns(3)
         with right:
             commit_button = st.button("Commit Changes", type='primary', width="stretch")
+            if commit_button:
+                commit_sql()
+                st.success("Changes committed.")
     else:
         left, middle = st.columns(2)
 
     with left:
         execute_button = st.button("Execute Query", type='secondary', width="stretch")
+        if execute_button:
+            status = execute_sql(sql_query)
+            if status[0]:
+                st.success(status[1])
+            else:
+                st.error(f"{status[1]}: {status[3]}")
+
     with middle:
-        rollback_button = st.button("Rollback", type='secondary', width="stretch")
+        rollback_button = st.button("Rollback", type='secondary', width="stretch", disabled=auto_commit_toggle)
+        if rollback_button:
+            rollback_sql()
+            st.info("Changes rolled back.")
     
