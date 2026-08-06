@@ -3,4 +3,4 @@ tempfile
 pandas
 streamlit
 langchain
-langchain_google_genai
+langchain-google-genai
