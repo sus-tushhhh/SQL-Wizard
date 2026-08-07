@@ -176,7 +176,7 @@ def query_generator(query, _agent=agent) -> list[str]:
         always use semicolons where ever needed and highlight words in explanationa and tip using ``
 
         don't answer anything other than SQL queries if user says anything out of context just say
-        "I can only generate SQL Queries"
+        "I can only generate SQL Queries based on the selected table"
 
         User query = {query}, table = {selected_table}
     """
