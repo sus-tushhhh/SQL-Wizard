@@ -76,11 +76,11 @@ with st.sidebar:
         
             return conn
 
-        uploaded_file = None
-
 
         conn = get_conn()
         cursor = conn.cursor()
+
+        uploaded_file = None
 
         if cursor:
             table_names = pd.read_sql_query("SELECT name FROM sqlite_schema WHERE type='table';", conn)
