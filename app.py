@@ -126,16 +126,14 @@ agent = create_agent(
 
 def update_table(query: str):
     if query.startswith('SELECT'):
-        limit = " LIMIT 5;"
-    else:
-        limit = " "
+        query = query[: -1] + " LIMIT 5;"
 
-    table_preview_placeholder.dataframe(data=pd.read_sql_query(query.lstrip(';') + limit, conn),
+    table_preview_placeholder.dataframe(data=pd.read_sql_query(query, conn),
                                         hide_index=True)
     
 def rollback_sql():
     conn.rollback()
-    update_table(f"SELECT * from {selected_table}")
+    update_table(f"SELECT * from {selected_table};")
 
 
 def commit_sql():
@@ -154,7 +152,7 @@ def execute_sql(sql_query):
             
         else:
             if selected_table != "{table_name} as placeholder":
-                update_table(f"SELECT * from {selected_table}") 
+                update_table(f"SELECT * from {selected_table};") 
 
         return [True, "Successfully executed query"]
 
@@ -184,9 +182,9 @@ def query_generator(query, _agent=agent) -> list[str]:
     """
 
     if selected_table != "{table_name} as placeholder":
-        prompt += "\nSample Records : " + pd.read_sql_query(f"Select * from {selected_table} limit 5", conn).to_string()
+        prompt += "\nSample Records : " + pd.read_sql_query(f"Select * from {selected_table} limit 5;", conn).to_string()
 
-        prompt += "\nTable columns : " + pd.read_sql_query(f"PRAGMA table_info({selected_table})", conn).to_string()
+        prompt += "\nTable columns : " + pd.read_sql_query(f"PRAGMA table_info({selected_table});", conn).to_string()
 
     response = _agent.invoke({'messages' : [{'role': 'user', 'content': prompt}]})
     answer = response['messages'][-1].content[-1]['text']
