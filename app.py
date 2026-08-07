@@ -2,6 +2,7 @@ import sqlite3
 import streamlit as st
 import pandas as pd
 import tempfile
+import base64
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_agent
 
@@ -9,6 +10,27 @@ from langchain.agents import create_agent
 st.set_page_config(page_title="SQL Wizard", page_icon="🔮", layout="wide", initial_sidebar_state="expanded")
 st.title("🔮 SQL Wizard &nbsp;|&nbsp; :rainbow[AI Query Generator]", text_alignment="center")
 st.write("")
+
+def set_bg_from_local(image_file):
+    with open(image_file, "rb") as f:
+        encoded_string = base64.b64encode(f.read()).decode()
+    
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{encoded_string}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_bg_from_local("assets/bg.avif")
 
 
 with st.sidebar:
