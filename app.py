@@ -144,7 +144,7 @@ agent = create_agent(
 )
 
 def update_table(query: str):
-    if query.startswith('SELECT'):
+    if query.startswith('SELECT') and "limit" not in query.lower():
         query = query[: -1] + " LIMIT 5;"
 
     table_preview_placeholder.dataframe(data=pd.read_sql_query(query, conn),
