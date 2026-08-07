@@ -251,9 +251,9 @@ elif prompt_input or prompt_button:
                         st.write(explaination_text)
 
                 with tip_section:
-                    with st.container(border=True):
+                    with st.container(border=True, height="stretch"):
                         st.subheader(":violet[💡 Pro Tip : ]")
-                        st.write(tip)
+                        st.subheader(tip)
 
             else:
                 st.warning(response[0])
