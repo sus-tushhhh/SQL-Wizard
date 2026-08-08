@@ -1,4 +1,5 @@
 <div align='center'>
+
 # 🧙‍♂️ SQL-Wizard | AI Query Generator
 
 > **Talk to your database in plain English. Let AI handle the SQL.**
