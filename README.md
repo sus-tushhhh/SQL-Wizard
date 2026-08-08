@@ -73,36 +73,6 @@ Just describe your requirement and get an SQL query that you can use in your own
 
 ---
 
-## 🔄 How It Works
-
-```text
-        User Input
-            │
-            ▼
-   Natural Language Request
-            │
-            ▼
-      LangChain Pipeline
-            │
-            ▼
-       Gemini API
-            │
-            ▼
-       SQL Query
-            │
-            ▼
-     Query Review / Edit
-            │
-            ▼
-      SQLite Database
-            │
-       ┌────┴────┐
-       ▼         ▼
-    COMMIT    ROLLBACK
-```
-
----
-
 ## 🚀 Getting Started
 
 ### 1. Clone the Repository
