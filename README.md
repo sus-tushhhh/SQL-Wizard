@@ -183,12 +183,6 @@ This gives users greater control over database modifications instead of automati
 
 ---
 
-## 🙏 Acknowledgements
-
-Special thanks to **GRAStech** and **Ankit Mishra** for their guidance and support throughout the learning and development journey.
-
----
-
 ## 👨‍💻 Developer
 
 **Tushant**  
