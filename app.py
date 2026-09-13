@@ -88,8 +88,7 @@ with st.sidebar:
                 tmp_file.write(buf)
                 temp_path = tmp_file.name
 
-            if "temp_path" not in st.session_state:
-                st.session_state.temp_path = temp_path
+            st.session_state.temp_path = temp_path
             
             conn = sqlite3.Connection(temp_path, check_same_thread=False)
         
@@ -98,8 +97,6 @@ with st.sidebar:
 
         conn = get_conn()
         cursor = conn.cursor()
-
-        uploaded_file = None
 
         if cursor:
             table_names = pd.read_sql_query("SELECT name FROM sqlite_schema WHERE type='table';", conn)
@@ -122,7 +119,7 @@ if selected_table != "{table_name} as placeholder":
             with open(st.session_state.temp_path, 'rb') as f:
                 st.download_button("Download Database",
                                    data=f.read(),
-                                   file_name="sql_wizard.db",
+                                   file_name=uploaded_file.name,
                                    mime="application/octet-stream",
                                    width='stretch',
                                    icon=":material/download:")
@@ -156,6 +153,7 @@ def rollback_sql():
 
 
 def commit_sql():
+    conn.commit()
     conn.commit()
 
 
