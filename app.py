@@ -119,7 +119,7 @@ if selected_table != "{table_name} as placeholder":
             with open(st.session_state.temp_path, 'rb') as f:
                 st.download_button("Download Database",
                                    data=f.read(),
-                                   file_name=uploaded_file.name or 'sample.db',
+                                   file_name=uploaded_file.name if uploaded_file else 'sample.db',
                                    mime="application/octet-stream",
                                    width='stretch',
                                    icon=":material/download:")
